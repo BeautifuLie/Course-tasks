@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -82,4 +83,7 @@ func CombineResults(in, out chan interface{}) {
 
 	sort.Strings(result)
 	out <- strings.Join(result, "_")
+}
+func main() {
+	fmt.Println("aaaa")
 }
