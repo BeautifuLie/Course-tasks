@@ -1,0 +1,102 @@
+ROUTINE ======================== program.FastSearch in /home/denys/work/Course-tasks/hw3_bench/fast.go
+    6.04MB    45.95MB (flat, cum) 36.74% of Total
+         .          .     10:   "strings"
+         .          .     11:)
+         .          .     12:
+         .          .     13:// вам надо написать более быструю оптимальную этой функции
+         .          .     14:func FastSearch(out io.Writer) {
+         .       512B     15:   file, err := os.Open("./data/users.txt")
+         .          .     16:   if err != nil {
+         .          .     17:           panic(err)
+         .          .     18:   }
+         .          .     19:
+         .    12.76MB     20:   fileContents, err := ioutil.ReadAll(file)
+         .          .     21:   if err != nil {
+         .          .     22:           panic(err)
+         .          .     23:   }
+         .          .     24:
+         .     2.91kB     25:   r := regexp.MustCompile("@")
+         .          .     26:   seenBrowsers := []string{}
+         .          .     27:   uniqueBrowsers := 0
+         .          .     28:   foundUsers := ""
+         .          .     29:
+    2.73MB     2.80MB     30:   lines := strings.Split(string(fileContents), "\n")
+         .          .     31:
+         .          .     32:   users := make([]map[string]interface{}, 0)
+         .          .     33:   for _, line := range lines {
+  218.75kB   218.75kB     34:           user := make(map[string]interface{})
+         .          .     35:           // fmt.Printf("%v %v\n", err, line)
+    2.27MB     8.41MB     36:           err := json.Unmarshal([]byte(line), &user)
+         .          .     37:           if err != nil {
+         .          .     38:                   panic(err)
+         .          .     39:           }
+   63.97kB    63.97kB     40:           users = append(users, user)
+         .          .     41:   }
+         .          .     42:
+         .          .     43:   for i, user := range users {
+         .          .     44:
+         .          .     45:           isAndroid := false
+         .          .     46:           isMSIE := false
+         .          .     47:
+         .          .     48:           browsers, ok := user["browsers"].([]interface{})
+         .          .     49:           if !ok {
+         .          .     50:                   // log.Println("cant cast browsers")
+         .          .     51:                   continue
+         .          .     52:           }
+         .          .     53:
+         .          .     54:           for _, browserRaw := range browsers {
+         .          .     55:                   browser, ok := browserRaw.(string)
+         .          .     56:                   if !ok {
+         .          .     57:                           // log.Println("cant cast browser to string")
+         .          .     58:                           continue
+         .          .     59:                   }
+         .          .     60:                   if ok := strings.Contains(browser, "Android"); ok && err == nil {
+         .          .     61:                           isAndroid = true
+         .          .     62:                           notSeenBefore := true
+         .          .     63:                           for _, item := range seenBrowsers {
+         .          .     64:                                   if item == browser {
+         .          .     65:                                           notSeenBefore = false
+         .          .     66:                                   }
+         .          .     67:                           }
+         .          .     68:                           if notSeenBefore {
+         .          .     69:                                   // log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
+   10.19kB    10.19kB     70:                                   seenBrowsers = append(seenBrowsers, browser)
+         .          .     71:                                   uniqueBrowsers++
+         .          .     72:                           }
+         .          .     73:                   }
+         .          .     74:           }
+         .          .     75:
+         .          .     76:           for _, browserRaw := range browsers {
+         .          .     77:                   browser, ok := browserRaw.(string)
+         .          .     78:                   if !ok {
+         .          .     79:                           // log.Println("cant cast browser to string")
+         .          .     80:                           continue
+         .          .     81:                   }
+         .    20.83MB     82:                   if ok := strings.Contains(browser, "MSIE"); ok && err == nil {
+         .          .     83:                           isMSIE = true
+         .          .     84:                           notSeenBefore := true
+         .          .     85:                           for _, item := range seenBrowsers {
+         .          .     86:                                   if item == browser {
+         .          .     87:                                           notSeenBefore = false
+         .          .     88:                                   }
+         .          .     89:                           }
+         .          .     90:                           if notSeenBefore {
+         .          .     91:                                   // log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
+    5.75kB     5.75kB     92:                                   seenBrowsers = append(seenBrowsers, browser)
+         .          .     93:                                   uniqueBrowsers++
+         .          .     94:                           }
+         .          .     95:                   }
+         .          .     96:           }
+         .          .     97:
+         .          .     98:           if !(isAndroid && isMSIE) {
+         .          .     99:                   continue
+         .          .    100:           }
+         .          .    101:
+         .          .    102:           // log.Println("Android and MSIE user:", user["name"], user["email"])
+         .    34.27kB    103:           email := r.ReplaceAllString(user["email"].(string), " [at] ")
+  742.41kB   783.24kB    104:           foundUsers += fmt.Sprintf("[%d] %s <%s>\n", i, user["name"], email)
+         .          .    105:   }
+         .          .    106:
+   19.06kB    42.81kB    107:   fmt.Fprintln(out, "found users:\n"+foundUsers)
+         .     9.25kB    108:   fmt.Fprintln(out, "Total unique browsers", len(seenBrowsers))
+         .          .    109:} 
