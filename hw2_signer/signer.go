@@ -28,26 +28,28 @@ func ExecutePipeline(freeFlowJobs ...job) {
 
 func SingleHash(in, out chan interface{}) {
 	wg := &sync.WaitGroup{}
-	mu := &sync.Mutex{}
 
 	for i := range in {
 		wg.Add(1)
-
-		go func(i interface{}) {
+		data := strconv.Itoa(i.(int))
+		md5Data := DataSignerMd5(data)
+		go func(data string) {
 			defer wg.Done()
-			data := strconv.Itoa(i.(int))
 
-			mu.Lock()
-			md5Data := DataSignerMd5(data)
-			mu.Unlock()
+			crc32chan := make(chan string)
 
-			crc32Data := DataSignerCrc32(data)
+			go crcParallel(crc32chan, data)
+
 			crc32Md5Data := DataSignerCrc32(md5Data)
+			crc32Data := <-crc32chan // важно расположить после расчёта crc32Md5Data,чтобы его не блокировать
 
 			out <- crc32Data + "~" + crc32Md5Data
-		}(i)
+		}(data)
 	}
 	wg.Wait()
+}
+func crcParallel(out chan string, data string) {
+	out <- DataSignerCrc32(data)
 }
 
 func MultiHash(in, out chan interface{}) {
@@ -55,20 +57,27 @@ func MultiHash(in, out chan interface{}) {
 	wg := &sync.WaitGroup{}
 
 	for i := range in {
-		result := make([]string, TH)
+
 		wg.Add(1)
 		go func(i interface{}) {
 			defer wg.Done()
+			wg1 := &sync.WaitGroup{}
 
+			res := make([]string, TH) //наполнять слайс ТОЛЬКО через индекс
 			for j := 0; j < TH; j++ {
-
+				wg1.Add(1)
 				data := strconv.Itoa(j) + i.(string)
-				data1 := DataSignerCrc32(data)
 
-				result = append(result, data1)
+				go func(j int, res []string) {
+					defer wg1.Done()
+					data1 := DataSignerCrc32(data)
+					res[j] = data1
+				}(j, res)
 
 			}
-			out <- strings.Join(result, "")
+			wg1.Wait()
+
+			out <- strings.Join(res, "")
 		}(i)
 	}
 	wg.Wait()
@@ -80,7 +89,6 @@ func CombineResults(in, out chan interface{}) {
 	for i := range in {
 		result = append(result, i.(string))
 	}
-
 	sort.Strings(result)
 	out <- strings.Join(result, "_")
 }
