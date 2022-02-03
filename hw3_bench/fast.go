@@ -27,7 +27,8 @@ func FastSearch(out io.Writer) {
 	defer file.Close()
 
 	in := bufio.NewScanner(file)
-	seenBrowsers := []string{}
+	seenBrowsers := make(map[string]bool)
+
 	uniqueBrowsers := 0
 	foundUsers := ""
 
@@ -46,41 +47,18 @@ func FastSearch(out io.Writer) {
 		isMSIE := false
 
 		for _, browserRaw := range user.Browsers {
-			browser := browserRaw
 
-			if strings.Contains(browser, "Android") {
+			if strings.Contains(browserRaw, "Android") {
 				isAndroid = true
 
-				notSeenBefore := true
-				for _, item := range seenBrowsers {
-					if item == browser {
-						notSeenBefore = false
-					}
-				}
-				if notSeenBefore {
-					// log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
-					seenBrowsers = append(seenBrowsers, browser)
-					uniqueBrowsers++
-				}
+				seenBrowsers[browserRaw] = true
+				uniqueBrowsers++
 			}
-		}
-
-		for _, browserRaw := range user.Browsers {
-			browser := browserRaw
-
-			if strings.Contains(browser, "MSIE") {
+			if strings.Contains(browserRaw, "MSIE") {
 				isMSIE = true
-				notSeenBefore := true
-				for _, item := range seenBrowsers {
-					if item == browser {
-						notSeenBefore = false
-					}
-				}
-				if notSeenBefore {
-					// log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
-					seenBrowsers = append(seenBrowsers, browser)
-					uniqueBrowsers++
-				}
+
+				seenBrowsers[browserRaw] = true
+				uniqueBrowsers++
 			}
 		}
 
@@ -88,7 +66,6 @@ func FastSearch(out io.Writer) {
 			continue
 		}
 
-		// log.Println("Android and MSIE user:", user["name"], user["email"])
 		email := strings.Replace(user.Email, "@", " [at] ", -1)
 		foundUsers += fmt.Sprintf("[%d] %s <%s>\n", i, user.Name, email)
 	}
